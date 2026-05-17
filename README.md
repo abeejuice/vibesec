@@ -4,7 +4,7 @@
 
 Built for medical students and doctors using **Claude Code, Cursor, and Google AI Studio** who are shipping AI tools and don't want to think about cybersecurity — but need to.
 
-The TanStack supply chain attack (May 2025) and thousands of vibe-coded apps leaking API keys showed that AI tools generate insecure code by default. Medical builders handle sensitive health data. The stakes are higher. This agent makes secure defaults the path of least resistance.
+The TanStack supply chain attack (May 2026) and thousands of vibe-coded apps leaking API keys showed that AI tools generate insecure code by default. Medical builders handle sensitive health data. The stakes are higher. This agent makes secure defaults the path of least resistance.
 
 ---
 
