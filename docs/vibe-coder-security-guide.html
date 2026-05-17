@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vibe Coder Security Guide — Medical Edition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #0a0a0a;
+  --surface:   #111111;
+  --border:    #1e1e1e;
+  --border2:   #2a2a2a;
+  --green:     #00ff41;
+  --green-dim: #00cc33;
+  --green-mut: #003d0f;
+  --red:       #ff2222;
+  --orange:    #ff8c00;
+  --yellow:    #ffd700;
+  --blue:      #00aaff;
+  --purple:    #cc44ff;
+  --white:     #e8e8e8;
+  --gray:      #555;
+  --font:      'JetBrains Mono', monospace;
+  --font2:     'Share Tech Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--green-dim);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--green-mut); }
+
+/* ── PROGRESS ── */
+#progress-bar {
+  position: fixed; top: 0; left: 0; height: 2px;
+  background: var(--green); width: 0%; z-index: 9999;
+  transition: width 0.1s linear;
+  box-shadow: 0 0 10px var(--green);
+}
+
+/* ── SCANLINES ── */
+.scanlines { position: relative; overflow: hidden; }
+.scanlines::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 3px);
+  pointer-events: none; z-index: 2;
+}
+
+/* ── NAV ── */
+nav {
+  position: sticky; top: 2px; z-index: 100;
+  background: rgba(10,10,10,0.95);
+  border-bottom: 1px solid var(--border2);
+  padding: 10px 24px;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  backdrop-filter: blur(8px);
+}
+.nav-logo {
+  font-family: var(--font); font-size: 11px;
+  color: var(--green); margin-right: auto;
+  white-space: nowrap;
+  text-shadow: 0 0 10px var(--green);
+}
+nav a {
+  font-family: var(--font); font-size: 10px;
+  color: var(--gray); text-decoration: none;
+  padding: 5px 10px;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+nav a:hover { color: var(--green); border-color: var(--border2); }
+nav a.active { color: var(--green); border-color: var(--green); box-shadow: 0 0 6px rgba(0,255,65,0.2); }
+
+/* ── HERO ── */
+#hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center; padding: 80px 24px 60px;
+  background: var(--bg);
+  position: relative;
+}
+
+.patient-status {
+  font-family: var(--font); font-size: 11px;
+  color: var(--gray);
+  border: 1px solid var(--border2);
+  padding: 8px 20px; margin-bottom: 32px;
+  display: inline-flex; gap: 24px; flex-wrap: wrap; justify-content: center;
+}
+.patient-status span { color: var(--green-dim); }
+.patient-status .critical { color: var(--red); animation: blink 0.8s step-end infinite; }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ── EKG ── */
+.ekg-wrap {
+  width: 100%; max-width: 700px;
+  height: 60px; margin: 0 auto 32px;
+  overflow: hidden; position: relative;
+}
+.ekg-line {
+  stroke: var(--green);
+  stroke-width: 2;
+  fill: none;
+  filter: drop-shadow(0 0 4px var(--green));
+}
+.ekg-path {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: draw-ekg 2s ease-out forwards infinite;
+}
+@keyframes draw-ekg {
+  0% { stroke-dashoffset: 1000; opacity: 1; }
+  70% { stroke-dashoffset: 0; opacity: 1; }
+  85% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0.3; }
+}
+
+.hero-title {
+  font-family: var(--font);
+  font-size: clamp(22px, 4vw, 42px);
+  color: var(--green);
+  text-shadow: 0 0 20px rgba(0,255,65,0.4);
+  margin-bottom: 16px;
+  line-height: 1.3;
+}
+.hero-sub {
+  font-family: var(--font2);
+  font-size: clamp(16px, 2vw, 20px);
+  color: var(--green-dim);
+  max-width: 680px; margin: 0 auto 40px;
+  line-height: 1.8;
+}
+
+.term-btn {
+  display: inline-block;
+  font-family: var(--font); font-size: 11px;
+  color: var(--bg); background: var(--green);
+  padding: 12px 24px;
+  border: none; cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s;
+  margin: 6px;
+  clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+}
+.term-btn:hover { background: #00ff99; box-shadow: 0 0 20px rgba(0,255,65,0.4); }
+.term-btn.outline {
+  background: transparent; color: var(--green);
+  border: 1px solid var(--green);
+  clip-path: none;
+}
+.term-btn.outline:hover { background: var(--green-mut); }
+.term-btn.red-btn { background: var(--red); color: var(--white); }
+
+.hero-stats {
+  display: flex; gap: 16px; flex-wrap: wrap;
+  justify-content: center; margin-top: 48px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  padding: 16px 24px; text-align: center;
+  min-width: 120px;
+}
+.stat-n {
+  display: block; font-size: 28px;
+  color: var(--green);
+  text-shadow: 0 0 10px var(--green);
+  margin-bottom: 4px;
+}
+.stat-l { font-size: 10px; color: var(--gray); }
+
+/* ── SECTION ── */
+.section {
+  max-width: 1100px; margin: 0 auto;
+  padding: 70px 24px;
+}
+.sec-wrap { border-top: 1px solid var(--border2); }
+
+.sec-label {
+  font-size: 10px; color: var(--gray);
+  letter-spacing: 3px; margin-bottom: 8px;
+  display: block;
+}
+h2 {
+  font-family: var(--font);
+  font-size: clamp(16px, 2.5vw, 24px);
+  color: var(--green);
+  text-shadow: 0 0 15px rgba(0,255,65,0.3);
+  margin-bottom: 8px; line-height: 1.4;
+}
+.sec-desc {
+  font-family: var(--font2); font-size: 17px;
+  color: var(--green-dim); margin-bottom: 40px;
+  line-height: 1.7;
+}
+
+h3 {
+  font-family: var(--font); font-size: 12px;
+  color: var(--green-dim); margin-bottom: 16px;
+  letter-spacing: 1px;
+}
+
+/* ── TERMINAL WINDOW ── */
+.term-win {
+  background: #050505;
+  border: 1px solid var(--border2);
+  margin: 16px 0;
+  overflow: hidden;
+}
+.term-titlebar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border2);
+  padding: 6px 12px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; color: var(--gray);
+}
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot-r { background: #ff5f57; }
+.dot-y { background: #febc2e; }
+.dot-g { background: #28c840; }
+.term-body {
+  padding: 16px;
+  font-family: var(--font); font-size: 13px;
+  line-height: 1.8; overflow-x: auto;
+}
+.term-body.bad { border-left: 3px solid var(--red); }
+.term-body.good { border-left: 3px solid var(--green); }
+.line-bad { color: #ff6666; }
+.line-good { color: var(--green); }
+.line-comment { color: var(--gray); font-style: italic; }
+.line-neutral { color: #aaa; }
+
+/* ── PROMPT BOX ── */
+.prompt-box {
+  background: var(--green-mut);
+  border: 1px solid var(--green);
+  border-left: 3px solid var(--green);
+  padding: 14px 16px;
+  margin: 12px 0;
+  font-family: var(--font); font-size: 13px;
+  color: var(--green);
+  position: relative;
+}
+.prompt-box::before {
+  content: '> PASTE INTO CLAUDE CODE / CURSOR';
+  display: block; font-size: 9px;
+  color: var(--gray); margin-bottom: 8px;
+  letter-spacing: 2px;
+}
+.prompt-text { color: var(--white); line-height: 1.7; }
+
+.copy-btn {
+  font-family: var(--font); font-size: 9px;
+  background: transparent; color: var(--green);
+  border: 1px solid var(--green);
+  padding: 4px 10px; cursor: pointer;
+  margin-top: 8px; display: inline-block;
+  transition: all 0.1s;
+  letter-spacing: 1px;
+}
+.copy-btn:hover { background: var(--green-mut); }
+.copy-btn.copied { color: var(--yellow); border-color: var(--yellow); }
+
+/* ── WRISTBAND SEVERITY ── */
+.wristband {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font); font-size: 9px;
+  padding: 4px 10px;
+  border-left: 4px solid;
+  letter-spacing: 2px; margin-bottom: 12px;
+}
+.wb-critical { border-color: var(--red); color: var(--red); background: rgba(255,34,34,0.08); }
+.wb-high     { border-color: var(--orange); color: var(--orange); background: rgba(255,140,0,0.08); }
+.wb-medium   { border-color: var(--yellow); color: var(--yellow); background: rgba(255,215,0,0.08); }
+.wb-legal    { border-color: var(--blue); color: var(--blue); background: rgba(0,170,255,0.08); }
+.wb-supply   { border-color: var(--purple); color: var(--purple); background: rgba(204,68,255,0.08); }
+
+/* ── THREAT METER ── */
+#threat-wrap {
+  position: sticky; top: 42px; z-index: 90;
+  background: rgba(10,10,10,0.97);
+  border-bottom: 1px solid var(--border2);
+  padding: 12px 24px;
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  backdrop-filter: blur(8px);
+}
+.vitals-label { font-size: 10px; color: var(--gray); letter-spacing: 2px; white-space: nowrap; }
+.vitals-bar-wrap {
+  flex: 1; min-width: 200px; height: 16px;
+  background: #1a0000;
+  border: 1px solid var(--border2);
+  position: relative; overflow: hidden;
+}
+#vitals-fill {
+  height: 100%; width: 0%;
+  background: var(--red);
+  transition: width 0.6s ease, background 0.6s ease;
+  box-shadow: 0 0 10px currentColor;
+}
+#vitals-status {
+  font-family: var(--font); font-size: 11px;
+  color: var(--red); white-space: nowrap;
+  animation: blink 0.8s step-end infinite;
+  min-width: 160px;
+}
+#vitals-count { font-size: 11px; color: var(--gray); white-space: nowrap; }
+.vital-pulse {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 6px var(--red);
+  animation: pulse 1s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.4);opacity:0.7} }
+
+/* ── CHECKLIST SECTION ── */
+.group-label {
+  font-family: var(--font); font-size: 11px;
+  letter-spacing: 2px; padding: 12px 16px;
+  margin: 32px 0 16px;
+  display: flex; align-items: center; gap: 10px;
+}
+.gl-critical { border-left: 3px solid var(--red); color: var(--red); background: rgba(255,34,34,0.05); }
+.gl-high     { border-left: 3px solid var(--orange); color: var(--orange); background: rgba(255,140,0,0.05); }
+.gl-medium   { border-left: 3px solid var(--yellow); color: var(--yellow); background: rgba(255,215,0,0.05); }
+.gl-legal    { border-left: 3px solid var(--blue); color: var(--blue); background: rgba(0,170,255,0.05); }
+.gl-supply   { border-left: 3px solid var(--purple); color: var(--purple); background: rgba(204,68,255,0.05); }
+
+/* ── SECURITY CARD ── */
+.sec-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  margin-bottom: 12px;
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+.sec-card:hover { border-color: var(--green-mut); }
+.sec-card.checked { border-color: var(--green); opacity: 0.7; }
+.sec-card.checked .card-num { background: var(--green); color: var(--bg); }
+
+.card-header {
+  padding: 14px 16px;
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.card-check {
+  width: 20px; height: 20px; flex-shrink: 0;
+  border: 2px solid var(--gray);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; margin-top: 2px;
+  transition: all 0.2s;
+}
+.sec-card.checked .card-check {
+  border-color: var(--green);
+  color: var(--green);
+  background: rgba(0,255,65,0.1);
+}
+.card-num {
+  font-family: var(--font); font-size: 10px;
+  padding: 2px 8px;
+  background: var(--border2); color: var(--gray);
+  flex-shrink: 0; margin-top: 2px;
+  transition: all 0.2s;
+}
+.card-info { flex: 1; }
+.card-title {
+  font-family: var(--font); font-size: 13px;
+  color: var(--white); margin-bottom: 4px;
+}
+.card-desc { font-family: var(--font2); font-size: 16px; color: var(--gray); line-height: 1.5; }
+.card-expand {
+  font-family: var(--font); font-size: 9px;
+  color: var(--green); flex-shrink: 0;
+  padding: 4px 8px; border: 1px solid var(--border2);
+  margin-top: 2px; letter-spacing: 1px;
+}
+
+.card-body {
+  display: none;
+  padding: 0 16px 16px 48px;
+  border-top: 1px solid var(--border2);
+}
+.sec-card.open .card-body { display: block; }
+.sec-card.open .card-expand::before { content: '▼ '; }
+.card-expand::before { content: '▶ '; }
+
+.diff-label {
+  font-size: 9px; color: var(--gray);
+  letter-spacing: 2px; margin: 12px 0 4px;
+}
+
+/* ── CHECKLIST (pre-deploy) ── */
+.deploy-list { list-style: none; }
+.deploy-list li {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--border2);
+  margin-bottom: 8px;
+  font-family: var(--font2); font-size: 17px;
+  color: var(--green-dim); line-height: 1.5;
+  cursor: pointer; transition: all 0.15s;
+}
+.deploy-list li:hover { border-color: var(--green-mut); }
+.deploy-list li.done { opacity: 0.5; }
+.deploy-list li.done .dcheck { color: var(--green); }
+.dcheck {
+  font-size: 14px; flex-shrink: 0; margin-top: 2px; color: var(--gray);
+}
+.deploy-list code {
+  background: var(--border2); color: var(--green);
+  padding: 1px 6px; font-family: var(--font); font-size: 12px;
+}
+
+/* ── Q&A CARDS (PRE-OP) ── */
+.preop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px; margin-bottom: 32px;
+}
+.preop-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-left: 3px solid var(--green-dim);
+  padding: 18px;
+}
+.preop-q {
+  font-family: var(--font); font-size: 11px;
+  color: var(--white); margin-bottom: 8px;
+}
+.preop-q::before { content: '? '; color: var(--green); }
+.preop-a {
+  font-family: var(--font2); font-size: 16px;
+  color: var(--gray); line-height: 1.6;
+}
+
+/* ── INFO BOX ── */
+.info-box {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-left: 3px solid;
+  padding: 16px 20px;
+  margin: 20px 0;
+}
+.info-box.red { border-left-color: var(--red); }
+.info-box.green { border-left-color: var(--green); }
+.info-box.yellow { border-left-color: var(--yellow); }
+.info-box.blue { border-left-color: var(--blue); }
+.info-box strong {
+  font-family: var(--font); font-size: 10px;
+  display: block; margin-bottom: 8px;
+  letter-spacing: 2px;
+}
+.info-box.red strong { color: var(--red); }
+.info-box.green strong { color: var(--green); }
+.info-box.yellow strong { color: var(--yellow); }
+.info-box.blue strong { color: var(--blue); }
+.info-box p, .info-box li {
+  font-family: var(--font2); font-size: 17px;
+  color: var(--green-dim); line-height: 1.7;
+}
+.info-box ul { padding-left: 20px; }
+.info-box li { margin-bottom: 4px; }
+
+/* ── CODE BLUE ── */
+.code-blue {
+  background: rgba(255,34,34,0.05);
+  border: 2px solid var(--red);
+  padding: 24px;
+  margin: 32px 0;
+  position: relative;
+  box-shadow: 0 0 20px rgba(255,34,34,0.1);
+}
+.code-blue-header {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 20px;
+}
+.code-blue-badge {
+  font-family: var(--font); font-size: 13px;
+  color: var(--white); background: var(--red);
+  padding: 6px 16px; animation: blink 0.8s step-end infinite;
+}
+.code-blue-title {
+  font-family: var(--font); font-size: 14px; color: var(--red);
+}
+.blue-steps { list-style: none; counter-reset: steps; }
+.blue-steps li {
+  counter-increment: steps;
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,34,34,0.15);
+  font-family: var(--font2); font-size: 18px; color: var(--white); line-height: 1.6;
+}
+.blue-steps li:last-child { border-bottom: none; }
+.blue-steps li::before {
+  content: counter(steps);
+  font-family: var(--font); font-size: 11px;
+  background: var(--red); color: var(--white);
+  min-width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 2px;
+}
+.blue-steps code {
+  background: rgba(0,0,0,0.5); color: var(--red);
+  padding: 1px 6px; font-family: var(--font); font-size: 12px;
+  display: inline-block; margin-top: 4px;
+}
+
+/* ── TDD CARDS ── */
+.tdd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px; margin-bottom: 32px;
+}
+.tdd-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  padding: 20px;
+}
+.tdd-n {
+  font-family: var(--font); font-size: 24px;
+  color: var(--green-mut); margin-bottom: 12px;
+  text-shadow: 0 0 10px var(--green);
+}
+.tdd-card h3 { color: var(--white); font-size: 11px; margin-bottom: 8px; }
+.tdd-card p { font-family: var(--font2); font-size: 17px; color: var(--gray); margin-bottom: 12px; line-height: 1.6; }
+
+/* ── MONITORING LIST ── */
+.monitor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px; margin-bottom: 32px;
+}
+.monitor-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  padding: 16px;
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.monitor-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+.monitor-card h3 { font-size: 10px; color: var(--green-dim); margin-bottom: 4px; }
+.monitor-card p { font-family: var(--font2); font-size: 16px; color: var(--gray); line-height: 1.5; }
+
+/* ── FOOTER ── */
+footer {
+  background: var(--bg);
+  border-top: 1px solid var(--border2);
+  text-align: center; padding: 40px 24px;
+  font-family: var(--font); font-size: 10px;
+  color: var(--gray); line-height: 2.5;
+}
+footer span { color: var(--green-dim); }
+
+/* ── MOBILE ── */
+@media (max-width: 600px) {
+  nav a { font-size: 9px; padding: 4px 7px; }
+  .hero-title { font-size: 20px; }
+  .card-body { padding-left: 16px; }
+  #threat-wrap { gap: 10px; }
+}
+</style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <div class="nav-logo">// VIBE-SEC.MD</div>
+  <a href="#triage" class="nav-link">TRIAGE</a>
+  <a href="#preop" class="nav-link">PRE-OP</a>
+  <a href="#vitals" class="nav-link">VITALS</a>
+  <a href="#surgery" class="nav-link">SURGERY</a>
+  <a href="#icu" class="nav-link">ICU</a>
+</nav>
+
+<!-- HERO -->
+<section id="triage" class="scanlines">
+  <div id="hero">
+    <div class="patient-status">
+      <span>PATIENT: <span>YOUR APP</span></span>
+      <span>ATTENDING: <span>YOU</span></span>
+      <span>STATUS: <span class="critical">⬤ CRITICAL — UNREVIEWED</span></span>
+      <span>UNIT: <span>VIBE CODED</span></span>
+    </div>
+
+    <!-- EKG SVG -->
+    <div class="ekg-wrap">
+      <svg viewBox="0 0 700 60" width="100%" height="60" xmlns="http://www.w3.org/2000/svg">
+        <path class="ekg-line ekg-path" d="M0,30 L60,30 L70,30 L80,10 L90,50 L100,5 L115,55 L125,30 L180,30 L190,30 L200,10 L210,50 L220,5 L235,55 L245,30 L300,30 L310,30 L320,10 L330,50 L340,5 L355,55 L365,30 L420,30 L430,30 L440,10 L450,50 L460,5 L475,55 L485,30 L540,30 L550,30 L560,10 L570,50 L580,5 L595,55 L605,30 L700,30"/>
+      </svg>
+    </div>
+
+    <h1 class="hero-title">
+      YOUR VIBE CODED APP<br>IS NOT SAFE TO SHIP<span style="animation: blink 1s step-end infinite; display:inline;">_</span>
+    </h1>
+
+    <p class="hero-sub">
+      A field guide for medical builders using Claude Code, Cursor, Gemini CLI, and Google AI Studio.<br>
+      25 security checks, copy-paste AI fix prompts, and a CODE BLUE response plan.<br>
+      Built for doctors who code. Because your patients' data deserves better than vibes.
+    </p>
+
+    <div>
+      <a class="term-btn" href="#vitals">RUN DIAGNOSTICS ↓</a>
+      <a class="term-btn outline" href="#preop">PRE-OP CHECKLIST</a>
+    </div>
+
+    <div class="hero-stats">
+      <div class="stat-card"><span class="stat-n" style="color:var(--red);">25</span><span class="stat-l">SECURITY CHECKS</span></div>
+      <div class="stat-card"><span class="stat-n">5</span><span class="stat-l">THREAT CATEGORIES</span></div>
+      <div class="stat-card"><span class="stat-n" style="color:var(--yellow);">20+</span><span class="stat-l">AI FIX PROMPTS</span></div>
+      <div class="stat-card"><span class="stat-n" style="color:var(--orange);">1</span><span class="stat-l">CODE BLUE PROTOCOL</span></div>
+    </div>
+
+    <!-- TanStack callout -->
+    <div class="info-box red" style="max-width:700px; margin: 48px auto 0; text-align:left;">
+      <strong>⚠ REAL INCIDENT: THE TANSTACK SUPPLY CHAIN ATTACK — MAY 2025</strong>
+      <p>The TanStack ecosystem — used by thousands of developers — suffered a supply chain compromise. Malicious code was injected into an npm package. Apps that ran <code style="font-family:var(--font); font-size:12px; background:rgba(0,0,0,0.4); color:var(--red); padding:1px 5px;">npm install</code> pulled in the backdoor automatically. This is the threat most vibe coders never think about — it's not your code that gets you, it's the 847 packages you never read. <strong style="color:var(--red); font-family:var(--font); font-size:10px; display:inline; letter-spacing:0;">Run npm audit before every single deploy.</strong></p>
+    </div>
+  </div>
+</section>
+
+<!-- PRE-OP -->
+<section id="preop" class="sec-wrap">
+  <div class="section">
+    <span class="sec-label">// SECTION 02</span>
+    <h2>PRE-OP: THINK BEFORE YOU VIBE</h2>
+    <p class="sec-desc">Before you open Cursor or type a single prompt — answer these 5 questions. Most security failures happen because nobody asked them at the start.</p>
+
+    <div class="preop-grid">
+      <div class="preop-card">
+        <p class="preop-q">What data am I collecting, and do I actually need all of it?</p>
+        <p class="preop-a">GDPR and data minimisation law: you're only allowed to collect what's necessary. Less data = less liability. Are you storing email, location, health info? Why?</p>
+      </div>
+      <div class="preop-card">
+        <p class="preop-q">Who can access what — do I even need auth?</p>
+        <p class="preop-a">A public med reference tool needs no auth. A tool that stores user data absolutely does. Decide this before Cursor writes your routes.</p>
+      </div>
+      <div class="preop-card">
+        <p class="preop-q">What's the worst-case scenario if this gets hacked?</p>
+        <p class="preop-a">Walk through the nightmare: API bill of ₹50,000, patient data exposed, your name on a breach notice. If that's unacceptable, your security posture must match the risk.</p>
+      </div>
+      <div class="preop-card">
+        <p class="preop-q">Am I handling any PHI or PII?</p>
+        <p class="preop-a">If your app touches anything that could identify a patient — symptoms, diagnoses, contact info — you are in regulatory territory. HIPAA (US), DPDP Act (India), GDPR (EU) all apply.</p>
+      </div>
+      <div class="preop-card">
+        <p class="preop-q">What's my incident response plan?</p>
+        <p class="preop-a">If your .env leaks tonight, what do you do first? Write the answer before you ship. The plan below in the ICU section is your template.</p>
+      </div>
+    </div>
+
+    <h3>// LEGAL MINIMUM — DO THIS BEFORE YOU COLLECT DATA</h3>
+    <div class="info-box blue">
+      <strong>COMPLIANCE BASELINE (from Reddit vibe-coding guide)</strong>
+      <ul>
+        <li>Publish a privacy policy — even a simple one. Describe what you collect and why.</li>
+        <li>Document how you store and handle user data (encrypted at rest? who has DB access?).</li>
+        <li>Don't do anything obviously dodgy with user info — selling it, sharing it, using it to train models without consent.</li>
+        <li>If you collect any EU user data: GDPR applies. If Indian users: DPDP Act 2023 applies.</li>
+        <li>You don't need to be perfect — but you need to not be reckless.</li>
+      </ul>
+    </div>
+
+    <h3 style="margin-top: 32px;">// THE SECURITY-FIRST PROMPT — USE BEFORE EVERY FEATURE</h3>
+    <div class="prompt-box">
+      <p class="prompt-text">"Before writing any code for this feature, first: (1) List all the security requirements this feature must satisfy, (2) Identify potential attack vectors, (3) Note any data being collected or stored, (4) Flag any auth or permissions required. Only then write the implementation."</p>
+      <button class="copy-btn" onclick="copyText(this, 'Before writing any code for this feature, first: (1) List all the security requirements this feature must satisfy, (2) Identify potential attack vectors, (3) Note any data being collected or stored, (4) Flag any auth or permissions required. Only then write the implementation.')">COPY PROMPT</button>
+    </div>
+  </div>
+</section>
+
+<!-- VITALS THREAT METER (sticky) -->
+<div id="threat-wrap">
+  <span class="vitals-label">// PATIENT VITALS</span>
+  <div class="vital-pulse" id="vital-pulse"></div>
+  <div class="vitals-bar-wrap">
+    <div id="vitals-fill"></div>
+  </div>
+  <div id="vitals-status">⬤ FLATLINE — 0 CHECKS CLEARED</div>
+  <div id="vitals-count">0 / 25 PASSED</div>
+</div>
+
+<!-- VITALS CHECKLIST -->
+<section id="vitals" class="sec-wrap">
+  <div class="section">
+    <span class="sec-label">// SECTION 03</span>
+    <h2>VITALS: THE SECURITY CHECKLIST</h2>
+    <p class="sec-desc">Click each card to expand. Check it off when you've applied the fix. Watch your patient stabilise. Every card includes the bad pattern, the fix, and a prompt to paste into Claude Code or Cursor.</p>
+
+    <!-- GROUP: CRITICAL -->
+    <div class="group-label gl-critical">🔴 CRITICAL — INSTANT GAME-OVER IF MISSED</div>
+
+    <!-- C1 -->
+    <div class="sec-card" id="card-1" onclick="toggleCard(this, 1)">
+      <div class="card-header">
+        <div class="card-check" id="check-1"></div>
+        <span class="card-num">C-01</span>
+        <div class="card-info">
+          <div class="wristband wb-critical">CRITICAL</div>
+          <p class="card-title">API KEYS HARDCODED IN FRONTEND JS</p>
+          <p class="card-desc">If your key is in the browser, assume it's already been taken. Anyone who opens DevTools can read it. Cursor does this constantly.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <p class="diff-label">❌ BAD — WHAT CURSOR OFTEN GENERATES</p>
+        <div class="term-win">
+          <div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span> frontend/api.js</div>
+          <div class="term-body bad">
+            <div class="line-bad">const response = await fetch('https://api.openai.com/v1/...', {</div>
+            <div class="line-bad">  headers: { 'Authorization': 'Bearer sk-proj-abc123YOURKEYHERE' }</div>
+            <div class="line-bad">});</div>
+            <div class="line-comment">// This key is now PUBLIC — anyone in DevTools can read it</div>
+          </div>
+        </div>
+        <p class="diff-label">✅ FIXED — KEY MOVED TO BACKEND ONLY</p>
+        <div class="term-win">
+          <div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span> backend/routes/ai.js</div>
+          <div class="term-body good">
+            <div class="line-comment">// Key lives ONLY in .env on the server</div>
+            <div class="line-good">const apiKey = process.env.OPENAI_API_KEY;</div>
+            <div class="line-good">const response = await fetch('https://api.openai.com/v1/...', {</div>
+            <div class="line-good">  headers: { 'Authorization': `Bearer ${apiKey}` }</div>
+            <div class="line-good">});</div>
+            <div class="line-comment">// Frontend calls YOUR backend proxy, never OpenAI directly</div>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <p class="prompt-text">"Audit my entire codebase for any API keys, secrets, or tokens hardcoded in frontend files. Move all of them to server-side environment variables. Create a backend proxy route for any external API calls the frontend was making directly. Show me every file you change."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- C2 -->
+    <div class="sec-card" id="card-2" onclick="toggleCard(this, 2)">
+      <div class="card-header">
+        <div class="card-check" id="check-2"></div>
+        <span class="card-num">C-02</span>
+        <div class="card-info">
+          <div class="wristband wb-critical">CRITICAL</div>
+          <p class="card-title">.ENV COMMITTED TO GIT — EVEN ONCE</p>
+          <p class="card-desc">It's in the history even if you deleted the file. git log can find it instantly. Every key in that file must be rotated.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <p class="diff-label">❌ BAD — .env visible in git history</p>
+        <div class="term-win">
+          <div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span> terminal</div>
+          <div class="term-body bad">
+            <div class="line-bad">git add .</div>
+            <div class="line-bad">git commit -m "initial"</div>
+            <div class="line-comment"># .env was not in .gitignore — it's now in history forever</div>
+            <div class="line-bad">git rm .env</div>
+            <div class="line-comment"># Too late. It's still in the commit history.</div>
+          </div>
+        </div>
+        <p class="diff-label">✅ FIXED — proper .gitignore from the start</p>
+        <div class="term-win">
+          <div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span> .gitignore</div>
+          <div class="term-body good">
+            <div class="line-good">.env</div>
+            <div class="line-good">.env.local</div>
+            <div class="line-good">.env.production</div>
+            <div class="line-good">.env*.local</div>
+            <div class="line-comment"># Commit .env.example with dummy values instead</div>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <p class="prompt-text">"Check my .gitignore and confirm it properly excludes all .env files and any other sensitive config. Also check if any .env files have ever been committed to this repo's history. If so, tell me exactly which commits and what I need to do to purge them."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- C3 -->
+    <div class="sec-card" id="card-3" onclick="toggleCard(this, 3)">
+      <div class="card-header">
+        <div class="card-check" id="check-3"></div>
+        <span class="card-num">C-03</span>
+        <div class="card-info">
+          <div class="wristband wb-critical">CRITICAL</div>
+          <p class="card-title">ADMIN ROUTES PROTECTED ONLY IN THE FRONTEND</p>
+          <p class="card-desc">The server doesn't care about your React Router guards. Hit the endpoint directly and it opens right up. Every route must be protected server-side.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <p class="diff-label">❌ BAD — frontend-only "protection"</p>
+        <div class="term-win">
+          <div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span> App.jsx</div>
+          <div class="term-body bad">
+            <div class="line-bad">{"{"}{isAdmin ? &lt;AdminPanel /&gt; : &lt;Redirect to="/" /&gt;{"}"}</div>
+            <div class="line-comment">// The backend route /api/admin is still wide open</div>
+            <div class="line-comment">// curl https://yourapp.com/api/admin/users  ← works fine</div>
+          </div>
+        </div>
+        <p class="diff-label">✅ FIXED — server-side auth middleware</p>
+        <div class="term-win">
+          <div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span> backend/routes/admin.js</div>
+          <div class="term-body good">
+            <div class="line-good">router.use(requireAuth);      // must be logged in</div>
+            <div class="line-good">router.use(requireRole('admin')); // must be admin role</div>
+            <div class="line-good">router.get('/users', getUsers);</div>
+            <div class="line-comment">// Frontend guards are UX only — server guards are security</div>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <p class="prompt-text">"Audit every API route in my backend. For each route, tell me: what auth middleware is applied, whether it requires a specific role, and whether it could be accessed without authentication. Flag any route that handles sensitive data or admin actions without server-side auth middleware."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- C4 -->
+    <div class="sec-card" id="card-4" onclick="toggleCard(this, 4)">
+      <div class="card-header">
+        <div class="card-check" id="check-4"></div>
+        <span class="card-num">C-04</span>
+        <div class="card-info">
+          <div class="wristband wb-critical">CRITICAL</div>
+          <p class="card-title">SQL INJECTION VIA STRING CONCATENATION</p>
+          <p class="card-desc">Building SQL with user input strings is a decades-old vulnerability AI tools still generate. One crafted input and your entire database is readable or deleted.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <p class="diff-label">❌ BAD — string concatenation</p>
+        <div class="term-win">
+          <div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span> queries.js</div>
+          <div class="term-body bad">
+            <div class="line-bad">const query = "SELECT * FROM users WHERE id=" + userId;</div>
+            <div class="line-comment">// userId = "1 OR 1=1; DROP TABLE users; --"</div>
+            <div class="line-comment">// Your database is now gone.</div>
+          </div>
+        </div>
+        <p class="diff-label">✅ FIXED — parameterised queries</p>
+        <div class="term-win">
+          <div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span> queries.js</div>
+          <div class="term-body good">
+            <div class="line-good">const query = "SELECT * FROM users WHERE id = $1";</div>
+            <div class="line-good">const result = await db.query(query, [userId]);</div>
+            <div class="line-comment">// userId is passed as a parameter, never interpolated</div>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <p class="prompt-text">"Search my entire codebase for any SQL queries that use string concatenation or template literals with user-supplied values. Replace every one with parameterised queries. Show me each change."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- C5 -->
+    <div class="sec-card" id="card-5" onclick="toggleCard(this, 5)">
+      <div class="card-header">
+        <div class="card-check" id="check-5"></div>
+        <span class="card-num">C-05</span>
+        <div class="card-info">
+          <div class="wristband wb-critical">CRITICAL</div>
+          <p class="card-title">AUTH MIDDLEWARE MISSING ON INTERNAL API ROUTES</p>
+          <p class="card-desc">AI adds middleware to obvious routes and skips the rest. Audit every single endpoint. Assume nothing is protected until you verify it.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <div class="prompt-box" style="margin-top:0;">
+          <p class="prompt-text">"List every API route in my application. For each one, explicitly state whether it has authentication middleware, what that middleware checks, and whether the protection is sufficient for the data it handles. Flag any that are missing auth or have weak protection."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GROUP: HIGH -->
+    <div class="group-label gl-high">🟠 HIGH — FIX BEFORE YOU SHARE A LINK</div>
+
+    <!-- H6 -->
+    <div class="sec-card" id="card-6" onclick="toggleCard(this, 6)">
+      <div class="card-header">
+        <div class="card-check" id="check-6"></div>
+        <span class="card-num">H-06</span>
+        <div class="card-info">
+          <div class="wristband wb-high">HIGH</div>
+          <p class="card-title">NO RATE LIMITING ON /LOGIN</p>
+          <p class="card-desc">Bots can try 10,000 password combos while you sleep. Add rate limiting and lockout after 5 failed attempts. This is table stakes.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <p class="diff-label">✅ FIXED — express-rate-limit example</p>
+        <div class="term-win">
+          <div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span> middleware/rateLimit.js</div>
+          <div class="term-body good">
+            <div class="line-good">import rateLimit from 'express-rate-limit';</div>
+            <div class="line-good">export const loginLimiter = rateLimit({</div>
+            <div class="line-good">  windowMs: 15 * 60 * 1000, // 15 minutes</div>
+            <div class="line-good">  max: 5,                    // 5 attempts max</div>
+            <div class="line-good">  message: 'Too many attempts. Try again in 15 minutes.'</div>
+            <div class="line-good">});</div>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <p class="prompt-text">"Add rate limiting to my login route and any other auth endpoints. Use a sliding window of 15 minutes with a max of 5 attempts. Return a clear error message. Also add account lockout after 10 total failed attempts across any window."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- H7 -->
+    <div class="sec-card" id="card-7" onclick="toggleCard(this, 7)">
+      <div class="card-header">
+        <div class="card-check" id="check-7"></div>
+        <span class="card-num">H-07</span>
+        <div class="card-info">
+          <div class="wristband wb-high">HIGH</div>
+          <p class="card-title">CORS SET TO WILDCARD (*)</p>
+          <p class="card-desc">Any website can make authenticated requests to your API using your users' own cookies. Whitelist specific origins only.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <p class="diff-label">❌ BAD</p>
+        <div class="term-win"><div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span> server.js</div>
+          <div class="term-body bad"><div class="line-bad">app.use(cors()); // or cors({ origin: '*' })</div></div>
+        </div>
+        <p class="diff-label">✅ FIXED</p>
+        <div class="term-win"><div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span> server.js</div>
+          <div class="term-body good">
+            <div class="line-good">app.use(cors({</div>
+            <div class="line-good">  origin: ['https://yourapp.com', 'https://www.yourapp.com'],</div>
+            <div class="line-good">  credentials: true</div>
+            <div class="line-good">}));</div>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <p class="prompt-text">"Find my CORS configuration and replace any wildcard origins with an explicit whitelist of allowed domains. Use my production domain and localhost for development. Enable credentials only if needed."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- H8 -->
+    <div class="sec-card" id="card-8" onclick="toggleCard(this, 8)">
+      <div class="card-header">
+        <div class="card-check" id="check-8"></div>
+        <span class="card-num">H-08</span>
+        <div class="card-info">
+          <div class="wristband wb-high">HIGH</div>
+          <p class="card-title">JWTS STORED IN LOCALSTORAGE</p>
+          <p class="card-desc">One XSS attack steals every token on your site. localStorage is readable by any script on the page. Use httpOnly cookies instead.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <p class="diff-label">❌ BAD</p>
+        <div class="term-win"><div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+          <div class="term-body bad"><div class="line-bad">localStorage.setItem('token', jwt);</div></div>
+        </div>
+        <p class="diff-label">✅ FIXED — httpOnly cookie set from server</p>
+        <div class="term-win"><div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+          <div class="term-body good">
+            <div class="line-good">res.cookie('token', jwt, {</div>
+            <div class="line-good">  httpOnly: true,  // not readable by JS</div>
+            <div class="line-good">  secure: true,    // HTTPS only</div>
+            <div class="line-good">  sameSite: 'strict'</div>
+            <div class="line-good">});</div>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <p class="prompt-text">"Find any JWT or session tokens stored in localStorage or sessionStorage. Move them to httpOnly, secure, sameSite=strict cookies set by the server on login. Update the auth flow accordingly."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- H9 -->
+    <div class="sec-card" id="card-9" onclick="toggleCard(this, 9)">
+      <div class="card-header">
+        <div class="card-check" id="check-9"></div>
+        <span class="card-num">H-09</span>
+        <div class="card-info">
+          <div class="wristband wb-high">HIGH</div>
+          <p class="card-title">WEAK / DEFAULT JWT SECRET</p>
+          <p class="card-desc">Attackers test common secrets first. "secret", "password", "jwt_secret" are all on wordlists. Generate a 256-bit random secret and rotate it.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <p class="diff-label">✅ Generate a strong secret</p>
+        <div class="term-win"><div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span> terminal</div>
+          <div class="term-body good">
+            <div class="line-comment"># Generate a 256-bit secret and paste into .env</div>
+            <div class="line-good">node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"</div>
+            <div class="line-comment"># Output goes in .env as JWT_SECRET=abc123...</div>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <p class="prompt-text">"Check my JWT configuration. If the secret is hardcoded, weak, or a default value from a tutorial, replace it with a reference to an environment variable. Generate a strong secret using Node's crypto module and show me how to add it to .env."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- H10 -->
+    <div class="sec-card" id="card-10" onclick="toggleCard(this, 10)">
+      <div class="card-header">
+        <div class="card-check" id="check-10"></div>
+        <span class="card-num">H-10</span>
+        <div class="card-info">
+          <div class="wristband wb-high">HIGH</div>
+          <p class="card-title">IDOR — NO OWNERSHIP VALIDATION</p>
+          <p class="card-desc">Change the ID in the URL. Can you access another user's data? Most vibe coded apps: yes. Validate ownership server-side on every resource request.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <p class="diff-label">❌ BAD — fetches any record by ID</p>
+        <div class="term-win"><div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+          <div class="term-body bad"><div class="line-bad">app.get('/api/records/:id', async (req, res) =&gt; {"{"}</div>
+            <div class="line-bad">  const record = await db.find(req.params.id);</div>
+            <div class="line-bad">  res.json(record); // returns ANY user's record</div>
+            <div class="line-bad">{"}"});</div></div>
+        </div>
+        <p class="diff-label">✅ FIXED — ownership check</p>
+        <div class="term-win"><div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+          <div class="term-body good">
+            <div class="line-good">const record = await db.find(req.params.id);</div>
+            <div class="line-good">if (record.userId !== req.user.id) {"{"}</div>
+            <div class="line-good">  return res.status(403).json({"{"} error: 'Forbidden' {"}"});</div>
+            <div class="line-good">{"}"}</div>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <p class="prompt-text">"Audit every GET, PUT, PATCH, DELETE route that takes a resource ID as a parameter. For each one, verify that the route checks whether the authenticated user owns that resource before returning or modifying it. Add ownership checks wherever they're missing."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- H11 -->
+    <div class="sec-card" id="card-11" onclick="toggleCard(this, 11)">
+      <div class="card-header">
+        <div class="card-check" id="check-11"></div>
+        <span class="card-num">H-11</span>
+        <div class="card-info">
+          <div class="wristband wb-high">HIGH</div>
+          <p class="card-title">PASSWORDS HASHED WITH MD5 OR SHA1</p>
+          <p class="card-desc">Rainbow tables crack MD5 in seconds. No salt = no protection. Use bcrypt or argon2, no exceptions.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <p class="diff-label">✅ FIXED — bcrypt</p>
+        <div class="term-win"><div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+          <div class="term-body good">
+            <div class="line-good">import bcrypt from 'bcrypt';</div>
+            <div class="line-good">const hash = await bcrypt.hash(password, 12); // cost factor 12</div>
+            <div class="line-good">const match = await bcrypt.compare(attempt, hash);</div>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <p class="prompt-text">"Find all password hashing in my codebase. If it uses md5, sha1, sha256, or any non-bcrypt/argon2 method, replace it with bcrypt (cost factor 12). Update the comparison logic to match."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- H12 -->
+    <div class="sec-card" id="card-12" onclick="toggleCard(this, 12)">
+      <div class="card-header">
+        <div class="card-check" id="check-12"></div>
+        <span class="card-num">H-12</span>
+        <div class="card-info">
+          <div class="wristband wb-high">HIGH</div>
+          <p class="card-title">AUTH TOKENS THAT NEVER EXPIRE</p>
+          <p class="card-desc">Stolen session = permanent access forever. Set an expiry on every token. Implement refresh token rotation.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <div class="prompt-box" style="margin-top:0;">
+          <p class="prompt-text">"Check my JWT signing configuration. Add an expiry of 15 minutes for access tokens. Implement a separate refresh token flow with 7-day expiry, stored in the database so it can be revoked. Show the full login, refresh, and logout flow."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GROUP: MEDIUM -->
+    <div class="group-label gl-medium">🟡 MEDIUM — CLEAN BEFORE YOU PUBLICISE</div>
+
+    <!-- M13–M20 compact -->
+    <div class="sec-card" id="card-13" onclick="toggleCard(this, 13)">
+      <div class="card-header">
+        <div class="card-check" id="check-13"></div>
+        <span class="card-num">M-13</span>
+        <div class="card-info">
+          <div class="wristband wb-medium">MEDIUM</div>
+          <p class="card-title">NO HTTPS ENFORCEMENT</p>
+          <p class="card-desc">Credentials sent over plain HTTP can be intercepted on any public Wi-Fi. Redirect all HTTP to HTTPS at the server level.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <div class="prompt-box" style="margin-top:0;">
+          <p class="prompt-text">"Add HTTPS enforcement to my server. Redirect all HTTP requests to HTTPS automatically. Also add the Strict-Transport-Security header (HSTS) with a max-age of at least 1 year."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-card" id="card-14" onclick="toggleCard(this, 14)">
+      <div class="card-header">
+        <div class="card-check" id="check-14"></div>
+        <span class="card-num">M-14</span>
+        <div class="card-info">
+          <div class="wristband wb-medium">MEDIUM</div>
+          <p class="card-title">SESSIONS NOT INVALIDATED ON LOGOUT</p>
+          <p class="card-desc">The old session token still works after the user clicks logout. Client-side cookie clearing is not enough — invalidate server-side too.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <div class="prompt-box" style="margin-top:0;">
+          <p class="prompt-text">"Update my logout endpoint to invalidate the session server-side — either by deleting the session record from the database or adding the token to a blocklist. Clearing the client cookie alone is insufficient."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-card" id="card-15" onclick="toggleCard(this, 15)">
+      <div class="card-header">
+        <div class="card-check" id="check-15"></div>
+        <span class="card-num">M-15</span>
+        <div class="card-info">
+          <div class="wristband wb-medium">MEDIUM</div>
+          <p class="card-title">ERROR RESPONSES EXPOSING STACK TRACES</p>
+          <p class="card-desc">You're giving attackers a map of your infrastructure. Log errors server-side, return generic messages to the client.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <p class="diff-label">❌ BAD</p>
+        <div class="term-win"><div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+          <div class="term-body bad"><div class="line-bad">res.status(500).json({"{"} error: err.stack {"}"});</div></div>
+        </div>
+        <p class="diff-label">✅ FIXED</p>
+        <div class="term-win"><div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+          <div class="term-body good">
+            <div class="line-good">console.error(err); // log full error server-side</div>
+            <div class="line-good">res.status(500).json({"{"} error: 'Something went wrong' {"}"});</div>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <p class="prompt-text">"Audit all my error handlers. Ensure stack traces, database table names, and internal paths are never returned to the client. Replace them with generic error messages. Full error details should only go to server-side logs."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-card" id="card-16" onclick="toggleCard(this, 16)">
+      <div class="card-header">
+        <div class="card-check" id="check-16"></div>
+        <span class="card-num">M-16</span>
+        <div class="card-info">
+          <div class="wristband wb-medium">MEDIUM</div>
+          <p class="card-title">FILE UPLOADS WITH NO MIME TYPE VALIDATION</p>
+          <p class="card-desc">Upload a server-side script, get full access. Extension checks alone don't protect you — validate MIME type server-side.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <div class="prompt-box" style="margin-top:0;">
+          <p class="prompt-text">"Find my file upload handling. Add server-side MIME type validation using the file buffer (not just the extension or Content-Type header). Whitelist only the specific file types my app needs. Reject everything else with a clear error."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-card" id="card-17" onclick="toggleCard(this, 17)">
+      <div class="card-header">
+        <div class="card-check" id="check-17"></div>
+        <span class="card-num">M-17</span>
+        <div class="card-info">
+          <div class="wristband wb-medium">MEDIUM</div>
+          <p class="card-title">SERVER RUNNING AS ROOT</p>
+          <p class="card-desc">One exploit gives full system access. Run your app as a non-privileged user. This costs nothing to fix.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <p class="diff-label">✅ Dockerfile / deployment fix</p>
+        <div class="term-win"><div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span> Dockerfile</div>
+          <div class="term-body good">
+            <div class="line-good">RUN addgroup -S appgroup &amp;&amp; adduser -S appuser -G appgroup</div>
+            <div class="line-good">USER appuser</div>
+            <div class="line-good">CMD ["node", "server.js"]</div>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <p class="prompt-text">"Check how my application is deployed. If it runs as root (either in Docker or on a VPS), add a non-privileged user and run the app as that user instead. Show me the Dockerfile or systemd service changes needed."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-card" id="card-18" onclick="toggleCard(this, 18)">
+      <div class="card-header">
+        <div class="card-check" id="check-18"></div>
+        <span class="card-num">M-18</span>
+        <div class="card-info">
+          <div class="wristband wb-medium">MEDIUM</div>
+          <p class="card-title">DATABASE PORT EXPOSED TO THE INTERNET</p>
+          <p class="card-desc">Your Postgres on port 5432 should never have a public IP. Put it behind a firewall or private network.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <div class="info-box yellow">
+          <strong>HOW TO CHECK</strong>
+          <p>On most cloud providers (Railway, Render, Fly.io, AWS): go to your database settings and confirm there is no public IP or that the firewall blocks port 5432/3306/27017 from all external IPs. Only your app server should be able to reach the database, on an internal network.</p>
+        </div>
+        <div class="prompt-box">
+          <p class="prompt-text">"Review my database configuration and deployment setup. Is the database accessible from the public internet? If so, explain how to move it behind a private network or firewall rule that only allows connections from my application server's IP."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-card" id="card-19" onclick="toggleCard(this, 19)">
+      <div class="card-header">
+        <div class="card-check" id="check-19"></div>
+        <span class="card-num">M-19</span>
+        <div class="card-info">
+          <div class="wristband wb-medium">MEDIUM</div>
+          <p class="card-title">OPEN REDIRECTS IN CALLBACK URLs</p>
+          <p class="card-desc">Used to send users to phishing sites through your trusted domain. Validate and whitelist every redirect destination.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <div class="prompt-box" style="margin-top:0;">
+          <p class="prompt-text">"Find any routes in my app that accept a redirect URL as a parameter (e.g., ?next=, ?redirect=, ?returnTo=). Add validation so only whitelisted internal paths are allowed. Reject any redirect to an external domain."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-card" id="card-20" onclick="toggleCard(this, 20)">
+      <div class="card-header">
+        <div class="card-check" id="check-20"></div>
+        <span class="card-num">M-20</span>
+        <div class="card-info">
+          <div class="wristband wb-medium">MEDIUM</div>
+          <p class="card-title">SECURITY HEADERS MISSING</p>
+          <p class="card-desc">CSP, HSTS, X-Frame-Options, X-Content-Type-Options. A 2-minute AI prompt gets you a solid baseline. From the Reddit guide — this is the quick win most vibe coders skip.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <p class="diff-label">✅ helmet.js (Express)</p>
+        <div class="term-win"><div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+          <div class="term-body good">
+            <div class="line-good">import helmet from 'helmet';</div>
+            <div class="line-good">app.use(helmet()); // sets 15 security headers automatically</div>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <p class="prompt-text">"Review my app as a security specialist. Add strong security headers: Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy. Use helmet.js if Express, or set headers manually. Explain what each header does."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GROUP: LEGAL -->
+    <div class="group-label gl-legal">🟢 LEGAL / COMPLIANCE — PROTECT YOURSELF, NOT JUST YOUR APP</div>
+
+    <div class="sec-card" id="card-21" onclick="toggleCard(this, 21)">
+      <div class="card-header">
+        <div class="card-check" id="check-21"></div>
+        <span class="card-num">L-21</span>
+        <div class="card-info">
+          <div class="wristband wb-legal">COMPLIANCE</div>
+          <p class="card-title">NO PRIVACY POLICY WHEN COLLECTING USER DATA</p>
+          <p class="card-desc">If you collect any user data, you need a privacy policy. GDPR, DPDP Act, and most app stores require it. You don't need a lawyer — you need to not be reckless.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <div class="prompt-box" style="margin-top:0;">
+          <p class="prompt-text">"Write a basic privacy policy for my app. It collects: [list what you collect — email, usage data, etc.]. Users are primarily from [India/EU/etc.]. Cover: what data is collected, why, how it's stored, who can access it, how users can request deletion, and contact info. Plain English. Keep it honest."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-card" id="card-22" onclick="toggleCard(this, 22)">
+      <div class="card-header">
+        <div class="card-check" id="check-22"></div>
+        <span class="card-num">L-22</span>
+        <div class="card-info">
+          <div class="wristband wb-legal">COMPLIANCE</div>
+          <p class="card-title">COLLECTING MORE DATA THAN NEEDED</p>
+          <p class="card-desc">GDPR data minimisation: only collect what's necessary for your stated purpose. Every extra field is extra liability.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <div class="prompt-box" style="margin-top:0;">
+          <p class="prompt-text">"Review my user registration form and database schema. For each field I collect, ask: is this actually required for the app to function? Flag any fields that are 'nice to have' vs 'necessary'. Suggest what to remove to minimise data collection."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-card" id="card-23" onclick="toggleCard(this, 23)">
+      <div class="card-header">
+        <div class="card-check" id="check-23"></div>
+        <span class="card-num">L-23</span>
+        <div class="card-info">
+          <div class="wristband wb-legal">COMPLIANCE</div>
+          <p class="card-title">API RESPONSES RETURNING TOO MUCH USER DATA</p>
+          <p class="card-desc">Your /me endpoint probably returns the full database row including password hash, internal IDs, and fields the frontend never uses. Strip it down.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <div class="prompt-box" style="margin-top:0;">
+          <p class="prompt-text">"Check my app as a security specialist and identify any API endpoints returning too much user data. Look for: password hashes, internal database IDs, tokens, or private fields being returned to the frontend. Create explicit response serializers that only return what's needed."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-card" id="card-24" onclick="toggleCard(this, 24)">
+      <div class="card-header">
+        <div class="card-check" id="check-24"></div>
+        <span class="card-num">L-24</span>
+        <div class="card-info">
+          <div class="wristband wb-legal">COMPLIANCE</div>
+          <p class="card-title">SECRETS APPEARING IN SERVER LOGS</p>
+          <p class="card-desc">API keys and tokens logged during debugging end up in your logging service, readable by anyone with log access. Scrub them.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <div class="prompt-box" style="margin-top:0;">
+          <p class="prompt-text">"Check my app for any logging statements that might output API keys, tokens, passwords, or other sensitive values. Replace them with redacted versions or remove the logging entirely. Also check if my request logging middleware logs authorization headers."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GROUP: SUPPLY CHAIN -->
+    <div class="group-label gl-supply">⚠️ SUPPLY CHAIN — THE TANSTACK LESSON</div>
+
+    <div class="sec-card" id="card-25" onclick="toggleCard(this, 25)">
+      <div class="card-header">
+        <div class="card-check" id="check-25"></div>
+        <span class="card-num">S-25</span>
+        <div class="card-info">
+          <div class="wristband wb-supply">SUPPLY CHAIN</div>
+          <p class="card-title">NPM PACKAGES NOT AUDITED SINCE SETUP</p>
+          <p class="card-desc">The TanStack hack injected malicious code into a trusted npm package. You never read the code. Your app pulled it in automatically. Run npm audit before every deploy — no exceptions.</p>
+        </div>
+        <span class="card-expand">SHOW FIX</span>
+      </div>
+      <div class="card-body">
+        <p class="diff-label">✅ RUN THIS NOW</p>
+        <div class="term-win"><div class="term-titlebar"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span> terminal</div>
+          <div class="term-body good">
+            <div class="line-good">npm audit                    # see all vulnerabilities</div>
+            <div class="line-good">npm audit --audit-level=high # fail CI on high/critical only</div>
+            <div class="line-good">npm audit fix                # auto-fix what's fixable</div>
+            <div class="line-comment"># Add 'npm audit --audit-level=critical' to your deploy script</div>
+          </div>
+        </div>
+        <div class="prompt-box">
+          <p class="prompt-text">"Add npm audit to my deployment pipeline so it runs automatically before every deploy and fails the build if any critical vulnerabilities are found. Also set up GitHub Dependabot alerts for this repository."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- SURGERY: TDD + PRE-DEPLOY -->
+<section id="surgery" class="sec-wrap">
+  <div class="section">
+    <span class="sec-label">// SECTION 04</span>
+    <h2>SURGERY: TDD + PRE-DEPLOY CHECKLIST</h2>
+    <p class="sec-desc">You don't need to become a TDD expert. You need 3 prompts that make your AI tools write tests alongside the code — and a 10-point pre-deploy checklist you can run in under 10 minutes.</p>
+
+    <h3>// 3 TDD PROMPTS FOR CLAUDE CODE / CURSOR</h3>
+    <div class="tdd-grid">
+      <div class="tdd-card">
+        <p class="tdd-n">01</p>
+        <h3>TESTS FIRST — BEFORE ANY CODE</h3>
+        <p>Forces the AI to define what correct behaviour looks like before writing the implementation. Catches security assumptions early.</p>
+        <div class="prompt-box" style="margin-top:0;">
+          <p class="prompt-text">"Before writing any code for this feature, write the tests first. Define: what should this function return for valid input? What should it reject? What are the edge cases? What happens with malicious input? Write the test file first, then implement to make them pass."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+      <div class="tdd-card">
+        <p class="tdd-n">02</p>
+        <h3>AUTH MIDDLEWARE WITH FULL COVERAGE</h3>
+        <p>The most common security gap is auth middleware with no tests. This forces coverage of all three cases that matter.</p>
+        <div class="prompt-box" style="margin-top:0;">
+          <p class="prompt-text">"Add authentication middleware to this route with full test coverage. Write tests for: (1) authenticated user with correct role — should succeed, (2) authenticated user with wrong role — should return 403, (3) unauthenticated request — should return 401, (4) expired or tampered token — should return 401. Implement the middleware to pass all tests."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+      <div class="tdd-card">
+        <p class="tdd-n">03</p>
+        <h3>SECURITY REQUIREMENTS FIRST</h3>
+        <p>Use before any new feature. Gets the AI to think adversarially before it writes a single line of production code.</p>
+        <div class="prompt-box" style="margin-top:0;">
+          <p class="prompt-text">"Before generating any code: (1) List every security requirement this feature must satisfy, (2) Identify potential attack vectors an adversary could use, (3) List the input validation rules needed, (4) State what the function must never do or expose. Review this list with me, then implement with those constraints baked in from the start."</p>
+          <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+        </div>
+      </div>
+    </div>
+
+    <h3>// PRE-DEPLOY CHECKLIST — RUN BEFORE EVERY LAUNCH</h3>
+    <ul class="deploy-list" id="deploy-list">
+      <li onclick="toggleDeploy(this)"><span class="dcheck">☐</span><span>Run <code>npm audit</code> — zero critical vulnerabilities allowed</span></li>
+      <li onclick="toggleDeploy(this)"><span class="dcheck">☐</span><span>Grep for hardcoded secrets: <code>grep -r "sk-\|AKIA\|Bearer " . --include="*.js" --include="*.ts"</code></span></li>
+      <li onclick="toggleDeploy(this)"><span class="dcheck">☐</span><span>Confirm <code>.env</code> is in <code>.gitignore</code> and never committed: <code>git log --all -- .env</code></span></li>
+      <li onclick="toggleDeploy(this)"><span class="dcheck">☐</span><span>Verify every API route has appropriate auth middleware — no exceptions</span></li>
+      <li onclick="toggleDeploy(this)"><span class="dcheck">☐</span><span>Test rate limiting: send 10 rapid login requests and confirm the 6th is blocked</span></li>
+      <li onclick="toggleDeploy(this)"><span class="dcheck">☐</span><span>Confirm CORS origins are whitelisted — no wildcard <code>*</code> in production</span></li>
+      <li onclick="toggleDeploy(this)"><span class="dcheck">☐</span><span>Test error messages: trigger a 500 error and confirm no stack trace is returned to the client</span></li>
+      <li onclick="toggleDeploy(this)"><span class="dcheck">☐</span><span>Confirm HTTPS redirect is active — <code>http://yourapp.com</code> should redirect to <code>https://</code></span></li>
+      <li onclick="toggleDeploy(this)"><span class="dcheck">☐</span><span>Review your API responses: does <code>/api/me</code> return a password hash or unnecessary fields?</span></li>
+      <li onclick="toggleDeploy(this)"><span class="dcheck">☐</span><span>Run the OWASP audit prompt below against your full codebase</span></li>
+    </ul>
+
+    <h3 style="margin-top: 32px;">// THE OWASP AUDIT PROMPT</h3>
+    <div class="prompt-box">
+      <p class="prompt-text">"Review my entire application against the OWASP Top 10. For each vulnerability category, tell me: (1) whether my app is vulnerable, (2) the specific file and line number where the issue exists, (3) the exact fix needed. Prioritise by severity. This is a pre-launch security audit — be thorough."</p>
+      <button class="copy-btn" onclick="copyPrompt(this, event)">COPY PROMPT</button>
+    </div>
+  </div>
+</section>
+
+<!-- ICU -->
+<section id="icu" class="sec-wrap">
+  <div class="section">
+    <span class="sec-label">// SECTION 05</span>
+    <h2>ICU: POST-DEPLOY MONITORING</h2>
+    <p class="sec-desc">Shipping is not the finish line for security. Set up ongoing monitoring habits and know exactly what to do if something goes wrong.</p>
+
+    <h3>// ONGOING MONITORING HABITS</h3>
+    <div class="monitor-grid">
+      <div class="monitor-card">
+        <span class="monitor-icon">📦</span>
+        <div>
+          <h3>NPM AUDIT ON EVERY DEPLOY</h3>
+          <p style="font-family:var(--font2); font-size:16px; color:var(--gray); line-height:1.5;">Add <code style="font-family:var(--font); font-size:12px; background:var(--border2); color:var(--green); padding:1px 5px;">npm audit --audit-level=critical</code> to your CI/deploy script. It should block the deploy if criticals are found. The TanStack attack would have shown up here.</p>
+        </div>
+      </div>
+      <div class="monitor-card">
+        <span class="monitor-icon">🔔</span>
+        <div>
+          <h3>API KEY USAGE ALERTS</h3>
+          <p style="font-family:var(--font2); font-size:16px; color:var(--gray); line-height:1.5;">Set spending limits and usage alerts on every API key (OpenAI, Anthropic, Google). A bill-shock alert at $10 over baseline catches a leaked key before it becomes a $10,000 problem.</p>
+        </div>
+      </div>
+      <div class="monitor-card">
+        <span class="monitor-icon">🔍</span>
+        <div>
+          <h3>GITHUB SECRET SCANNING</h3>
+          <p style="font-family:var(--font2); font-size:16px; color:var(--gray); line-height:1.5;">Enable GitHub's free secret scanning on your repo. It automatically detects API keys from 200+ providers committed to your history and notifies you immediately.</p>
+        </div>
+      </div>
+      <div class="monitor-card">
+        <span class="monitor-icon">📋</span>
+        <div>
+          <h3>ERROR LOG MONITORING</h3>
+          <p style="font-family:var(--font2); font-size:16px; color:var(--gray); line-height:1.5;">Watch your server error logs for unusual patterns — repeated 401s on /admin, massive spikes in traffic, errors from unexpected geographies. These are often your first signal of an attack.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- CODE BLUE -->
+    <div class="code-blue">
+      <div class="code-blue-header">
+        <span class="code-blue-badge">⬤ CODE BLUE</span>
+        <span class="code-blue-title">ALREADY SHIPPED WITH A VULNERABILITY? HERE'S YOUR TRIAGE PROTOCOL.</span>
+      </div>
+      <p style="font-family:var(--font2); font-size:18px; color:var(--gray); margin-bottom:20px; line-height:1.6;">Don't panic. Work through this list in order. Speed matters more than perfection right now.</p>
+      <ol class="blue-steps">
+        <li>
+          <div>
+            <strong style="color:var(--white); font-family:var(--font); font-size:11px; display:block; margin-bottom:4px;">ROTATE THE LEAKED KEY — IMMEDIATELY</strong>
+            Go to your API provider dashboard right now. Revoke the exposed key and generate a new one. Do this before anything else. Deleting the file is not enough — the key is already compromised.
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong style="color:var(--white); font-family:var(--font); font-size:11px; display:block; margin-bottom:4px;">FIND ALL COMMITS CONTAINING SECRETS</strong>
+            <code>git log --all --full-history -- .env</code><br>
+            <code>git log --all -S "YOUR_KEY_VALUE" --source --all</code>
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong style="color:var(--white); font-family:var(--font); font-size:11px; display:block; margin-bottom:4px;">PURGE THE HISTORY</strong>
+            Use <code>git filter-repo</code> (recommended) or BFG Repo Cleaner to remove the secret from all commits. Force-push the cleaned history. Warn collaborators first.
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong style="color:var(--white); font-family:var(--font); font-size:11px; display:block; margin-bottom:4px;">AUDIT API USAGE LOGS</strong>
+            Check your API provider's usage logs for the period the key was exposed. Look for requests you didn't make — unusual volumes, unknown endpoints, or requests from unexpected regions.
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong style="color:var(--white); font-family:var(--font); font-size:11px; display:block; margin-bottom:4px;">ASSESS DATA EXPOSURE</strong>
+            If user data was accessible: what was exposed? Who could have accessed it? For how long? Document this carefully — you may need it for the next step.
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong style="color:var(--white); font-family:var(--font); font-size:11px; display:block; margin-bottom:4px;">NOTIFY AFFECTED USERS IF REQUIRED</strong>
+            GDPR requires notification within 72 hours if personal data was likely exposed. DPDP Act (India) has similar requirements. Even if not legally required, notifying users is the right thing to do. Be specific about what happened, what was exposed, and what you've done.
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong style="color:var(--white); font-family:var(--font); font-size:11px; display:block; margin-bottom:4px;">PATCH AND RE-DEPLOY WITH FIXES APPLIED</strong>
+            Don't re-deploy until the original vulnerability is fixed. Use the checklist in Section 04 before the new deploy goes live.
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <div class="info-box green" style="margin-top: 32px;">
+      <strong>// YOU GOT THIS</strong>
+      <p>Every developer has shipped something they shouldn't have at some point. What separates good engineers from bad ones isn't perfection — it's whether you have a plan and execute it. You now have the plan. Run the checklist, apply the fixes, and ship something you're proud of.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div style="font-family: var(--font2); font-size: 18px; color: var(--gray); margin-bottom: 20px; letter-spacing: 4px;">
+    — — — — — — — — — — — — — — — — — — — — — — — —
+  </div>
+  <span>VIBE CODER SECURITY GUIDE — MEDICAL BUILDER EDITION</span><br>
+  Sources: <span>Wasim @WasimShips (20 Security Rules, May 2026)</span> · <span>r/vibecoding sanity check</span> · <span>TanStack Supply Chain Postmortem, May 2025</span><br>
+  <br>
+  Built for <span>medical students and doctors who build AI tools</span>.<br>
+  Security is not optional when your users trust you with their health data.<br>
+  <br>
+  <span style="color: var(--green); text-shadow: 0 0 10px var(--green);">// STAY PARANOID. SHIP SAFELY._</span>
+</footer>
+
+<script>
+// Progress bar
+window.addEventListener('scroll', function() {
+  var p = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+  document.getElementById('progress-bar').style.width = p + '%';
+});
+
+// Active nav
+var sections = document.querySelectorAll('section[id]');
+var navLinks = document.querySelectorAll('.nav-link');
+window.addEventListener('scroll', function() {
+  var pos = window.scrollY + 100;
+  sections.forEach(function(s) {
+    if (pos >= s.offsetTop && pos < s.offsetTop + s.offsetHeight) {
+      navLinks.forEach(function(l) { l.classList.remove('active'); });
+      var link = document.querySelector('nav a[href="#' + s.id + '"]');
+      if (link) link.classList.add('active');
+    }
+  });
+});
+
+// Threat meter
+var totalCards = 25;
+var checked = new Set();
+
+var statusLevels = [
+  { min: 0,  max: 0,  label: '⬤ FLATLINE — NO CHECKS CLEARED',        color: '#ff2222', fillColor: '#ff2222' },
+  { min: 1,  max: 4,  label: '⬤ CRITICAL — IMMEDIATE INTERVENTION',    color: '#ff2222', fillColor: '#ff2222' },
+  { min: 5,  max: 9,  label: '⬤ CRITICAL — DETERIORATING',             color: '#ff2222', fillColor: '#ff5500' },
+  { min: 10, max: 14, label: '◉ DETERIORATING — UNSTABLE',             color: '#ff8c00', fillColor: '#ff8c00' },
+  { min: 15, max: 19, label: '◉ GUARDED — SHOWING IMPROVEMENT',        color: '#ffd700', fillColor: '#ffd700' },
+  { min: 20, max: 24, label: '● STABLE — NEARING DISCHARGE',           color: '#00cc33', fillColor: '#00cc33' },
+  { min: 25, max: 25, label: '✚ DISCHARGED — HEALTHY TO SHIP',         color: '#00ff41', fillColor: '#00ff41' }
+];
+
+function updateVitals() {
+  var n = checked.size;
+  var pct = (n / totalCards) * 100;
+  var fill = document.getElementById('vitals-fill');
+  var status = document.getElementById('vitals-status');
+  var count = document.getElementById('vitals-count');
+  var pulse = document.getElementById('vital-pulse');
+
+  var level = statusLevels.find(function(l) { return n >= l.min && n <= l.max; }) || statusLevels[0];
+
+  fill.style.width = pct + '%';
+  fill.style.background = level.fillColor;
+  fill.style.boxShadow = '0 0 10px ' + level.fillColor;
+  status.style.color = level.color;
+  status.textContent = level.label;
+  pulse.style.background = level.color;
+  pulse.style.boxShadow = '0 0 6px ' + level.color;
+
+  if (n === 25) {
+    status.style.animation = 'none';
+  } else if (n >= 15) {
+    status.style.animation = 'none';
+  } else {
+    status.style.animation = 'blink 0.8s step-end infinite';
+  }
+
+  count.textContent = n + ' / 25 PASSED';
+}
+
+function toggleCard(card, num) {
+  card.classList.toggle('open');
+  var check = document.getElementById('check-' + num);
+
+  // clicking header area toggles check, clicking expand button just opens
+  if (event.target.classList.contains('card-expand') ||
+      event.target.closest('.card-body')) return;
+
+  if (card.classList.contains('checked')) {
+    card.classList.remove('checked');
+    check.textContent = '';
+    checked.delete(num);
+  } else {
+    card.classList.add('checked');
+    check.textContent = '✓';
+    checked.add(num);
+  }
+  updateVitals();
+}
+
+// Override — separate check toggle from open toggle
+document.querySelectorAll('.sec-card').forEach(function(card) {
+  card.addEventListener('click', function(e) {
+    // if clicking the checkbox area specifically
+    if (e.target.classList.contains('card-check') || e.target.closest('.card-check')) {
+      var num = parseInt(card.id.replace('card-', ''));
+      if (card.classList.contains('checked')) {
+        card.classList.remove('checked');
+        document.getElementById('check-' + num).textContent = '';
+        checked.delete(num);
+      } else {
+        card.classList.add('checked');
+        document.getElementById('check-' + num).textContent = '✓';
+        checked.add(num);
+      }
+      updateVitals();
+      e.stopPropagation();
+    }
+  });
+});
+
+document.querySelectorAll('.card-expand').forEach(function(btn) {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var card = btn.closest('.sec-card');
+    card.classList.toggle('open');
+  });
+});
+
+// Remove the inline onclick from sec-cards since we handle it above
+document.querySelectorAll('.sec-card').forEach(function(card) {
+  card.removeAttribute('onclick');
+});
+
+// Deploy checklist
+function toggleDeploy(li) {
+  li.classList.toggle('done');
+  var check = li.querySelector('.dcheck');
+  check.textContent = li.classList.contains('done') ? '✓' : '☐';
+}
+
+// Copy prompt from prompt-box
+function copyPrompt(btn, e) {
+  if (e) e.stopPropagation();
+  var text = btn.previousElementSibling.textContent.trim();
+  navigator.clipboard.writeText(text).then(function() {
+    btn.textContent = 'COPIED ✓';
+    btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = 'COPY PROMPT'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// Copy arbitrary text
+function copyText(btn, text) {
+  navigator.clipboard.writeText(text).then(function() {
+    btn.textContent = 'COPIED ✓';
+    btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = 'COPY PROMPT'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// Initialise meter
+updateVitals();
+</script>
+</body>
+</html>
