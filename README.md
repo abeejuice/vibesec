@@ -128,7 +128,7 @@ Security rules based on:
 - [Wasim @WasimShips](https://x.com/WasimShips) — 20 Security Rules for Vibe Coders (May 2026)
 - r/vibecoding — Pre-launch sanity check guide
 - [TanStack Supply Chain Postmortem](https://tanstack.com/blog/npm-supply-chain-compromise-postmortem) (May 2025)
-- Cousin's original security agent spec (AppSec Specialist + QA Lead)
+- Ashley's original security agent spec (AppSec Specialist + QA Lead)
 
 Built for the medical builder community. Security is not optional when your users trust you with their health.
 
